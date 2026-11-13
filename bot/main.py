@@ -9,6 +9,11 @@ import os
 load_dotenv()
 
 from handlers import router
+try:
+    from widget_handler import widget_router
+    HAS_WIDGET = True
+except Exception:
+    HAS_WIDGET = False
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,6 +29,9 @@ async def main():
     )
     dp = Dispatcher()
     dp.include_router(router)
+    if HAS_WIDGET:
+        dp.include_router(widget_router)
+        logger.info("✅ Widget handler yuklandi")
 
     logger.info("🤖 @totixon_bot ishga tushdi!")
     await bot.delete_webhook(drop_pending_updates=True)

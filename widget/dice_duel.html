@@ -1,0 +1,99 @@
+<!DOCTYPE html><html lang="uz"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#1a1a2e;--bg2:#16213e;--accent:#6c63ff;--green:#4ade80;--red:#f87171;--yellow:#fbbf24;--text:#e8e8f0;--hint:#88889a}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--tg-theme-bg-color,var(--bg));color:var(--tg-theme-text-color,var(--text));padding:12px;min-height:0}
+.title{text-align:center;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--hint);margin-bottom:10px}
+.players{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:12px}
+.player{background:rgba(255,255,255,.06);border-radius:14px;padding:12px 8px;text-align:center;border:2px solid transparent;transition:.3s}
+.player.winner{border-color:var(--green);background:rgba(74,222,128,.08)}
+.player.loser{border-color:var(--red);background:rgba(248,113,113,.08);opacity:.7}
+.p-name{font-size:11px;color:var(--hint);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-dice{font-size:36px;line-height:1;margin-bottom:4px;transition:transform .3s}
+.p-score{font-size:22px;font-weight:800}
+.vs{font-size:16px;font-weight:900;color:var(--hint);text-align:center}
+.btn-roll{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),#a78bfa);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+.btn-roll:active{transform:scale(.97);opacity:.9}
+.btn-roll:disabled{background:rgba(108,99,255,.3);cursor:not-allowed;transform:none}
+.status{text-align:center;font-size:12px;color:var(--hint);margin-top:8px;min-height:16px}
+.result-banner{display:none;text-align:center;padding:8px;border-radius:12px;font-size:13px;font-weight:700;margin-top:8px}
+.result-banner.win{background:rgba(74,222,128,.15);color:var(--green);border:1px solid rgba(74,222,128,.3)}
+.result-banner.lose{background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+.result-banner.draw{background:rgba(251,191,36,.15);color:var(--yellow);border:1px solid rgba(251,191,36,.3)}
+@keyframes spin{0%{transform:rotate(0deg) scale(1.2)}100%{transform:rotate(360deg) scale(1)}}
+.rolling{animation:spin .5s ease-out}
+</style></head>
+<body>
+<div class="title">🎲 Dice Duel</div>
+<div class="players">
+  <div class="player" id="p1">
+    <div class="p-name" id="p1name">Sen</div>
+    <div class="p-dice" id="p1dice">⬜</div>
+    <div class="p-score" id="p1score">-</div>
+  </div>
+  <div class="vs">VS</div>
+  <div class="player" id="p2">
+    <div class="p-name" id="p2name">Raqib</div>
+    <div class="p-dice" id="p2dice">⬜</div>
+    <div class="p-score" id="p2score">-</div>
+  </div>
+</div>
+<button class="btn-roll" id="rollBtn" onclick="roll()">🎲 Zar ot!</button>
+<div class="status" id="status">Zar otish uchun tugmani bosing</div>
+<div class="result-banner" id="result"></div>
+
+<script>
+var TW=window.TelegramWidget||{};
+var DICE=['⚀','⚁','⚂','⚃','⚄','⚅'];
+var state={};
+
+function init(){
+  var s=TW.state||{};
+  state=s;
+  if(s.p1name)document.getElementById('p1name').textContent=s.p1name;
+  if(s.p2name)document.getElementById('p2name').textContent=s.p2name;
+  if(s.p1roll!=null){setDice('p1',s.p1roll);document.getElementById('p1score').textContent=s.p1roll;}
+  if(s.p2roll!=null){setDice('p2',s.p2roll);document.getElementById('p2score').textContent=s.p2roll;}
+  if(s.done)showResult(s);
+  if(s.myRolled){
+    document.getElementById('rollBtn').disabled=true;
+    document.getElementById('status').textContent=s.p2rolled?'':'Raqib zarini kutmoqda...';
+  }
+}
+
+function setDice(pid,val){
+  var el=document.getElementById(pid+'dice');
+  el.textContent=DICE[val-1]||'🎲';
+}
+
+function roll(){
+  var btn=document.getElementById('rollBtn');
+  btn.disabled=true;
+  var d1=document.getElementById('p1dice');
+  d1.classList.add('rolling');
+  document.getElementById('status').textContent='Zarni otdingiz...';
+  setTimeout(function(){
+    d1.classList.remove('rolling');
+    TW.sendData&&TW.sendData(JSON.stringify({action:'roll'}));
+  },500);
+}
+
+function showResult(s){
+  var banner=document.getElementById('result');
+  banner.style.display='block';
+  var p1=document.getElementById('p1');
+  var p2=document.getElementById('p2');
+  if(s.p1roll>s.p2roll){
+    banner.className='result-banner win';banner.textContent='🏆 Sen g\'alaba qilding!';
+    p1.className='player winner';p2.className='player loser';
+  }else if(s.p1roll<s.p2roll){
+    banner.className='result-banner lose';banner.textContent='😞 Raqib g\'alaba qildi!';
+    p1.className='player loser';p2.className='player winner';
+  }else{
+    banner.className='result-banner draw';banner.textContent='🤝 Durrang!';
+  }
+  document.getElementById('status').textContent='';
+}
+
+init();
+</script>
+</body></html>
