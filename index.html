@@ -2,432 +2,893 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>🧩 Puzzle Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🃏 FlashCard</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  :root {
-    --bg: var(--tg-theme-bg-color, #1a1a2e);
-    --secondary-bg: var(--tg-theme-secondary-bg-color, #16213e);
-    --text: var(--tg-theme-text-color, #ffffff);
-    --hint: var(--tg-theme-hint-color, #aaaaaa);
-    --link: var(--tg-theme-link-color, #6c63ff);
-    --button: var(--tg-theme-button-color, #6c63ff);
-    --button-text: var(--tg-theme-button-text-color, #ffffff);
-    --accent: #6c63ff;
-    --correct: #4caf50;
-    --wrong: #f44336;
-    --radius: 16px;
-  }
+/* ═══════════════════════════════════════════
+   RESET & ROOT
+═══════════════════════════════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       var(--tg-theme-bg-color, #0f0f1a);
+  --bg2:      var(--tg-theme-secondary-bg-color, #1a1a2e);
+  --text:     var(--tg-theme-text-color, #e8e8f0);
+  --hint:     var(--tg-theme-hint-color, #888899);
+  --btn:      var(--tg-theme-button-color, #6c63ff);
+  --btn-text: var(--tg-theme-button-text-color, #ffffff);
+  --accent:   #6c63ff;
+  --green:    #4ade80;
+  --red:      #f87171;
+  --yellow:   #fbbf24;
+  --radius:   18px;
+}
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 16px;
-  }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-  /* Header */
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    padding: 12px 16px;
-    background: var(--secondary-bg);
-    border-radius: var(--radius);
-  }
+/* ═══════════════════════════════════════════
+   SCREENS
+═══════════════════════════════════════════ */
+.screen { display: none; min-height: 100vh; padding: 16px; animation: fadeIn .25s ease; }
+.screen.active { display: flex; flex-direction: column; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
 
-  .header h1 { font-size: 20px; }
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg2);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+.header-title { font-size: 18px; font-weight: 700; }
+.streak-badge {
+  display: flex; align-items: center; gap: 5px;
+  background: linear-gradient(135deg,#ff6b35,#ff9500);
+  padding: 6px 12px; border-radius: 20px;
+  font-weight: 700; font-size: 13px; color: #fff;
+}
 
-  .score-badge {
-    background: var(--accent);
-    color: white;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-weight: 700;
-    font-size: 14px;
-  }
+/* ═══════════════════════════════════════════
+   DECK GRID (HOME)
+═══════════════════════════════════════════ */
+.deck-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.deck-card {
+  background: var(--bg2);
+  border-radius: var(--radius);
+  padding: 18px 14px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+.deck-card::before {
+  content: '';
+  position: absolute; top:0; left:0; right:0; height:3px;
+  background: var(--accent);
+  border-radius: 3px 3px 0 0;
+}
+.deck-card:active { transform: scale(.97); border-color: var(--accent); }
+.deck-emoji { font-size: 28px; margin-bottom: 8px; }
+.deck-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.deck-count { font-size: 11px; color: var(--hint); }
+.deck-progress-bar {
+  height: 3px; background: rgba(108,99,255,.2);
+  border-radius: 3px; margin-top: 10px; overflow: hidden;
+}
+.deck-progress-fill { height:100%; background: var(--accent); border-radius: 3px; transition: width .4s; }
 
-  /* Progress bar */
-  .progress-wrap {
-    margin-bottom: 20px;
-  }
-  .progress-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: var(--hint);
-    margin-bottom: 6px;
-  }
-  .progress-bar {
-    height: 6px;
-    background: var(--secondary-bg);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), #a78bfa);
-    border-radius: 10px;
-    transition: width 0.5s ease;
-  }
+.btn-add-deck {
+  grid-column: span 2;
+  background: rgba(108,99,255,.12);
+  border: 2px dashed rgba(108,99,255,.4);
+  color: var(--accent);
+  border-radius: var(--radius);
+  padding: 16px;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; text-align: center;
+  transition: all .2s;
+}
+.btn-add-deck:active { background: rgba(108,99,255,.2); }
 
-  /* Puzzle card */
-  .puzzle-card {
-    background: var(--secondary-bg);
-    border-radius: var(--radius);
-    padding: 24px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(108, 99, 255, 0.2);
-    animation: fadeIn 0.3s ease;
-  }
+/* Stats row */
+.stats-row {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+  margin-bottom: 16px;
+}
+.stat-box {
+  background: var(--bg2); border-radius: var(--radius);
+  padding: 14px 10px; text-align: center;
+}
+.stat-val { font-size: 22px; font-weight: 700; color: var(--accent); }
+.stat-lbl { font-size: 10px; color: var(--hint); margin-top: 2px; }
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+/* ═══════════════════════════════════════════
+   FLASHCARD (STUDY SCREEN)
+═══════════════════════════════════════════ */
+#studyScreen { justify-content: flex-start; }
 
-  .puzzle-number {
-    font-size: 12px;
-    color: var(--accent);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 12px;
-  }
+.study-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.btn-back {
+  background: var(--bg2); border: none; color: var(--text);
+  width: 36px; height: 36px; border-radius: 12px;
+  font-size: 18px; cursor: pointer; display: flex; align-items:center; justify-content:center;
+}
+.study-title { font-size: 16px; font-weight: 600; flex:1; }
+.study-counter { font-size: 13px; color: var(--hint); }
 
-  .puzzle-question {
-    font-size: 17px;
-    line-height: 1.6;
-    font-weight: 500;
-  }
+/* Progress */
+.study-progress { margin-bottom: 20px; }
+.progress-bar { height: 6px; background: var(--bg2); border-radius:10px; overflow:hidden; }
+.progress-fill {
+  height:100%; background: linear-gradient(90deg,var(--accent),#a78bfa);
+  border-radius:10px; transition: width .4s ease;
+}
 
-  /* Options grid */
-  .options-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
+/* 3D FLIP CARD */
+.card-scene {
+  perspective: 1000px;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+}
+.card-wrap {
+  position: relative;
+  width: 100%; padding-top: 56%;
+  transform-style: preserve-3d;
+  transition: transform .6s cubic-bezier(.4,0,.2,1);
+  cursor: pointer;
+}
+.card-wrap.flipped { transform: rotateY(180deg); }
 
-  .option-btn {
-    background: var(--secondary-bg);
-    border: 2px solid rgba(108, 99, 255, 0.3);
-    color: var(--text);
-    padding: 14px 10px;
-    border-radius: var(--radius);
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: center;
-  }
+.card-face {
+  position: absolute; inset: 0;
+  border-radius: var(--radius);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  user-select: none;
+}
+.card-front {
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  border: 2px solid rgba(108,99,255,.4);
+}
+.card-back {
+  background: linear-gradient(135deg, #064e3b, #065f46);
+  border: 2px solid rgba(74,222,128,.4);
+  transform: rotateY(180deg);
+}
+.card-label {
+  font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: rgba(255,255,255,.5); margin-bottom: 12px; font-weight: 600;
+}
+.card-word {
+  font-size: clamp(22px, 6vw, 32px);
+  font-weight: 700; text-align: center; line-height: 1.3;
+}
+.card-hint-text {
+  font-size: 13px; color: rgba(255,255,255,.6);
+  margin-top: 10px; text-align: center; font-style: italic;
+}
+.card-tap-hint {
+  position: absolute; bottom: 14px;
+  font-size: 11px; color: rgba(255,255,255,.35);
+  display: flex; align-items: center; gap: 4px;
+}
 
-  .option-btn:active { transform: scale(0.96); }
-  .option-btn:hover { border-color: var(--accent); background: rgba(108,99,255,0.1); }
-  .option-btn.correct { background: rgba(76,175,80,0.2); border-color: var(--correct); color: var(--correct); }
-  .option-btn.wrong { background: rgba(244,67,54,0.2); border-color: var(--wrong); color: var(--wrong); }
-  .option-btn:disabled { cursor: not-allowed; opacity: 0.7; }
+/* Rating buttons */
+.rating-buttons {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+  margin-bottom: 16px;
+}
+.rating-btn {
+  border: none; border-radius: var(--radius);
+  padding: 14px 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.rating-btn:active { transform: scale(.96); }
+.rating-btn .rb-emoji { font-size: 20px; }
+.rating-btn.hard { background: rgba(248,113,113,.15); color: var(--red); border: 1.5px solid rgba(248,113,113,.3); }
+.rating-btn.ok   { background: rgba(251,191,36,.15); color: var(--yellow); border: 1.5px solid rgba(251,191,36,.3); }
+.rating-btn.easy { background: rgba(74,222,128,.15); color: var(--green); border: 1.5px solid rgba(74,222,128,.3); }
 
-  /* Action buttons */
-  .actions {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
+.flip-prompt {
+  text-align: center; color: var(--hint); font-size: 13px;
+  padding: 16px; animation: pulse 1.5s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
 
-  .btn {
-    flex: 1;
-    padding: 12px;
-    border-radius: var(--radius);
-    border: none;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
+/* ═══════════════════════════════════════════
+   ADD CARD SCREEN
+═══════════════════════════════════════════ */
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 12px; color: var(--hint); font-weight:600; letter-spacing:.5px; margin-bottom: 6px; display:block; }
+.form-input, .form-select, .form-textarea {
+  width: 100%; background: var(--bg2); border: 1.5px solid rgba(108,99,255,.2);
+  color: var(--text); border-radius: 12px; padding: 12px 14px;
+  font-size: 15px; outline: none; transition: border-color .2s;
+  font-family: inherit;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--accent);
+}
+.form-textarea { resize: none; height: 70px; }
+.form-select option { background: #1a1a2e; }
 
-  .btn-hint {
-    background: rgba(255,193,7,0.15);
-    color: #ffc107;
-    border: 1px solid rgba(255,193,7,0.3);
-  }
+/* ═══════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════ */
+.btn {
+  width: 100%; padding: 15px; border: none; border-radius: var(--radius);
+  font-size: 15px; font-weight: 700; cursor: pointer; transition: all .15s;
+  font-family: inherit;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:active { transform: scale(.98); background: #5b52e0; }
+.btn-secondary {
+  background: var(--bg2); color: var(--text);
+  border: 1.5px solid rgba(108,99,255,.2);
+  margin-top: 10px;
+}
+.btn-secondary:active { transform: scale(.98); }
 
-  .btn-next {
-    background: var(--accent);
-    color: white;
-  }
+/* ═══════════════════════════════════════════
+   COMPLETE SCREEN
+═══════════════════════════════════════════ */
+.complete-wrap {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 24px; text-align: center;
+}
+.complete-emoji { font-size: 72px; margin-bottom: 16px; animation: bounce .6s ease; }
+@keyframes bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+.complete-title { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+.complete-sub { font-size: 14px; color: var(--hint); margin-bottom: 28px; line-height: 1.6; }
+.session-stats {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+  width: 100%; margin-bottom: 28px;
+}
+.session-stat { background: var(--bg2); border-radius: var(--radius); padding: 14px 8px; }
+.ss-val { font-size: 24px; font-weight: 700; }
+.ss-lbl { font-size: 10px; color: var(--hint); margin-top: 3px; }
 
-  .btn:active { transform: scale(0.97); }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: rgba(30,27,75,.95); color:#fff;
+  padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight:600;
+  transition: transform .3s; z-index: 999; white-space: nowrap;
+  backdrop-filter: blur(10px); border: 1px solid rgba(108,99,255,.3);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
 
-  /* Result banner */
-  .result-banner {
-    display: none;
-    padding: 14px;
-    border-radius: var(--radius);
-    text-align: center;
-    font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 16px;
-    animation: fadeIn 0.3s ease;
-  }
-
-  .result-banner.correct { background: rgba(76,175,80,0.2); color: var(--correct); border: 1px solid var(--correct); }
-  .result-banner.wrong { background: rgba(244,67,54,0.2); color: var(--wrong); border: 1px solid var(--wrong); }
-
-  /* Stats */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-
-  .stat-card {
-    background: var(--secondary-bg);
-    border-radius: var(--radius);
-    padding: 14px;
-    text-align: center;
-  }
-
-  .stat-value { font-size: 24px; font-weight: 700; color: var(--accent); }
-  .stat-label { font-size: 11px; color: var(--hint); margin-top: 4px; }
-
-  /* Hint box */
-  .hint-box {
-    display: none;
-    background: rgba(255,193,7,0.1);
-    border: 1px solid rgba(255,193,7,0.3);
-    border-radius: var(--radius);
-    padding: 12px 16px;
-    color: #ffc107;
-    font-size: 14px;
-    margin-bottom: 16px;
-    animation: fadeIn 0.3s ease;
-  }
-
-  /* Confetti */
-  .confetti-wrap {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    pointer-events: none; z-index: 999;
-  }
+/* Tabs */
+.tabs { display:flex; gap:8px; margin-bottom:16px; }
+.tab {
+  flex:1; padding:10px; border-radius:12px; border:none;
+  font-size:13px; font-weight:600; cursor:pointer;
+  background: var(--bg2); color: var(--hint); transition:.2s;
+}
+.tab.active { background: var(--accent); color:#fff; }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>🧩 Puzzle</h1>
-  <div class="score-badge">⭐ <span id="scoreDisplay">0</span></div>
+<!-- ═══ HOME ═══ -->
+<div class="screen active" id="homeScreen">
+  <div class="header">
+    <div class="header-title">🃏 FlashCard</div>
+    <div class="streak-badge">🔥 <span id="streakCount">0</span></div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-val" id="totalCards">0</div>
+      <div class="stat-lbl">Jami karta</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="learnedCards">0</div>
+      <div class="stat-lbl">O'rganildi</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="todayCards">0</div>
+      <div class="stat-lbl">Bugun</div>
+    </div>
+  </div>
+
+  <div class="deck-grid" id="deckGrid">
+    <!-- decks injected here -->
+    <button class="btn-add-deck" onclick="showScreen('addDeckScreen')">
+      ➕ Yangi to'plam yaratish
+    </button>
+  </div>
 </div>
 
-<div class="stats">
-  <div class="stat-card">
-    <div class="stat-value" id="totalSolved">0</div>
-    <div class="stat-label">Yechilgan</div>
+<!-- ═══ STUDY ═══ -->
+<div class="screen" id="studyScreen">
+  <div class="study-header">
+    <button class="btn-back" onclick="showScreen('homeScreen')">←</button>
+    <div class="study-title" id="studyTitle">O'rganish</div>
+    <div class="study-counter" id="studyCounter">0/0</div>
   </div>
-  <div class="stat-card">
-    <div class="stat-value" id="correctCount">0</div>
-    <div class="stat-label">To'g'ri</div>
+
+  <div class="study-progress">
+    <div class="progress-bar"><div class="progress-fill" id="studyProgress" style="width:0%"></div></div>
   </div>
-  <div class="stat-card">
-    <div class="stat-value" id="wrongCount">0</div>
-    <div class="stat-label">Noto'g'ri</div>
+
+  <!-- Card -->
+  <div class="card-scene">
+    <div class="card-wrap" id="cardWrap" onclick="flipCard()">
+      <div class="card-face card-front">
+        <div class="card-label">So'z / Ibora</div>
+        <div class="card-word" id="frontWord">...</div>
+        <div class="card-hint-text" id="frontHint"></div>
+        <div class="card-tap-hint">👆 bosib ag'daring</div>
+      </div>
+      <div class="card-face card-back">
+        <div class="card-label">Tarjimasi</div>
+        <div class="card-word" id="backWord">...</div>
+        <div class="card-hint-text" id="backExample"></div>
+        <div class="card-tap-hint">👆 yana bosing</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flip prompt -->
+  <div class="flip-prompt" id="flipPrompt">Kartani ag'daring, keyin baholang 👆</div>
+
+  <!-- Rating (shown after flip) -->
+  <div class="rating-buttons" id="ratingBtns" style="display:none">
+    <button class="rating-btn hard" onclick="rateCard(1)">
+      <span class="rb-emoji">😓</span> Qiyin
+    </button>
+    <button class="rating-btn ok" onclick="rateCard(3)">
+      <span class="rb-emoji">🤔</span> O'rta
+    </button>
+    <button class="rating-btn easy" onclick="rateCard(5)">
+      <span class="rb-emoji">😊</span> Oson
+    </button>
   </div>
 </div>
 
-<div class="progress-wrap">
-  <div class="progress-label">
-    <span>Jarayon</span>
-    <span id="progressText">0 / 5</span>
+<!-- ═══ COMPLETE ═══ -->
+<div class="screen" id="completeScreen">
+  <div class="complete-wrap">
+    <div class="complete-emoji" id="completeEmoji">🎉</div>
+    <div class="complete-title" id="completeTitle">Ajoyib!</div>
+    <div class="complete-sub" id="completeSub">Siz bugun barcha kartalarni ko'rib chiqdingiz</div>
+
+    <div class="session-stats">
+      <div class="session-stat">
+        <div class="ss-val" style="color:var(--green)" id="easyCount">0</div>
+        <div class="ss-lbl">😊 Oson</div>
+      </div>
+      <div class="session-stat">
+        <div class="ss-val" style="color:var(--yellow)" id="okCount">0</div>
+        <div class="ss-lbl">🤔 O'rta</div>
+      </div>
+      <div class="session-stat">
+        <div class="ss-val" style="color:var(--red)" id="hardCount">0</div>
+        <div class="ss-lbl">😓 Qiyin</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="showScreen('homeScreen')" style="margin-bottom:10px">
+      🏠 Bosh menyu
+    </button>
+    <button class="btn btn-secondary" onclick="restartStudy()">
+      🔁 Yana o'rganish
+    </button>
   </div>
-  <div class="progress-bar">
-    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+</div>
+
+<!-- ═══ ADD DECK ═══ -->
+<div class="screen" id="addDeckScreen">
+  <div class="study-header">
+    <button class="btn-back" onclick="showScreen('homeScreen')">←</button>
+    <div class="study-title">Yangi to'plam</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('preset')">🌍 Tayyor</button>
+    <button class="tab" onclick="switchTab('custom')">✏️ O'zim</button>
+  </div>
+
+  <!-- Preset decks tab -->
+  <div id="presetTab">
+    <div class="deck-grid" id="presetGrid"></div>
+  </div>
+
+  <!-- Custom deck tab -->
+  <div id="customTab" style="display:none">
+    <div class="form-group">
+      <label class="form-label">TO'PLAM NOMI</label>
+      <input class="form-input" id="deckNameInput" placeholder="masalan: Inglizcha kundalik so'zlar" maxlength="40">
+    </div>
+    <div class="form-group">
+      <label class="form-label">EMOJI (ixtiyoriy)</label>
+      <input class="form-input" id="deckEmojiInput" placeholder="🎯" maxlength="2" style="width:80px">
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="form-label" style="margin:0">KARTALAR</div>
+      <button onclick="addCardRow()" style="background:rgba(108,99,255,.15);color:var(--accent);border:1px solid rgba(108,99,255,.3);padding:6px 12px;border-radius:10px;font-size:12px;cursor:pointer;font-weight:600">+ Qo'shish</button>
+    </div>
+    <div id="cardRows"></div>
+
+    <button class="btn btn-primary" onclick="saveCustomDeck()" style="margin-top:16px">
+      💾 To'plamni saqlash
+    </button>
+    <button class="btn btn-secondary" onclick="showScreen('homeScreen')">Bekor qilish</button>
   </div>
 </div>
 
-<div class="puzzle-card">
-  <div class="puzzle-number" id="puzzleNumber">TOPISHMOQ #1</div>
-  <div class="puzzle-question" id="puzzleQuestion">Yuklanmoqda...</div>
-</div>
+<div class="toast" id="toast"></div>
 
-<div class="hint-box" id="hintBox">💡 <span id="hintText"></span></div>
-<div class="result-banner" id="resultBanner"></div>
-
-<div class="options-grid" id="optionsGrid"></div>
-
-<div class="actions">
-  <button class="btn btn-hint" id="hintBtn" onclick="showHint()">💡 Hint (-3)</button>
-  <button class="btn btn-next" id="nextBtn" onclick="nextPuzzle()" disabled>⏭ Keyingi</button>
-</div>
-
-<canvas class="confetti-wrap" id="confettiCanvas"></canvas>
-
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════ -->
 <script>
 const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
+tg.ready(); tg.expand();
 
-// ── Puzzles ──────────────────────────────────────────────────────────
-const PUZZLES = [
-  { id:1, q:"🔢 Men 2 xonali sonman. O'nlar raqamim birlar raqamimdan 3 ta ko'p. Yig'indim 11. Men kimman?", a:"74", hint:"O'nlar + birlar = 11, o'nlar - birlar = 3", opts:["47","74","83","56"] },
-  { id:2, q:"🧩 Bir fermer 17 ta qo'yi bor edi. Bittasidan tashqari hammasi o'lib qoldi. Qancha qo'y qoldi?", a:"17", hint:"Savolni diqqat bilan o'qi 😉", opts:["1","16","17","0"] },
-  { id:3, q:"🔢 1, 1, 2, 3, 5, 8, 13, ... keyingi son?", a:"21", hint:"Fibonacci ketma-ketligi", opts:["18","20","21","25"] },
-  { id:4, q:"⚖️ 1 kg paxta og'irroqmi yoki 1 kg temirmi?", a:"Teng", hint:"Ikkalasi ham 1 kg 😄", opts:["Paxta","Temir","Teng","Bilmayman"] },
-  { id:5, q:"🧮 5 ta mushuk 5 daqiqada 5 ta sichqon tutsa, 100 ta mushuk 100 daqiqada nechta sichqon tutadi?", a:"10000", hint:"Har bir mushuk 1 daqiqada 1 ta tutadi", opts:["100","500","1000","10000"] },
-  { id:6, q:"🔢 Bir ota 3 ta o'g'li bor. Har bir o'g'lining 1 ta singlisi bor. Oilada nechta bola bor?", a:"4", hint:"Singlisi — hammaga umumiy bitta 😊", opts:["3","4","6","7"] },
-  { id:7, q:"🧠 Qaysi son butun sonlarning kvadratlari orasida uchrasa ham, 100 dan kichik ham?", a:"81", hint:"9×9 = ?", opts:["64","81","90","99"] },
+/* ── Storage ─────────────────────────────── */
+const DB_KEY = 'flashcard_db_v2';
+
+function loadDB() {
+  try { return JSON.parse(localStorage.getItem(DB_KEY)) || initDB(); }
+  catch { return initDB(); }
+}
+
+function initDB() {
+  return {
+    decks: [],
+    streak: 0,
+    lastStudyDate: null,
+    todayCount: 0,
+    totalLearned: 0
+  };
+}
+
+function saveDB(db) {
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+}
+
+/* ── Preset Decks ─────────────────────────── */
+const PRESET_DECKS = [
+  {
+    id: 'en_uz_basic', emoji: '🇬🇧', name: "Inglizcha — Asosiy",
+    cards: [
+      {f:"Hello",b:"Salom",h:"Greeting"},
+      {f:"Thank you",b:"Rahmat",h:"Gratitude"},
+      {f:"Please",b:"Iltimos",h:"Request"},
+      {f:"Sorry",b:"Kechirasiz",h:"Apology"},
+      {f:"Yes / No",b:"Ha / Yo'q"},
+      {f:"Good morning",b:"Xayrli tong"},
+      {f:"Good night",b:"Xayrli tun"},
+      {f:"How are you?",b:"Qalaysiz?"},
+      {f:"My name is...",b:"Mening ismim..."},
+      {f:"I don't understand",b:"Tushunmadim"},
+      {f:"Where is...?",b:"...qayerda?"},
+      {f:"How much?",b:"Qancha?"},
+      {f:"Water",b:"Suv"},
+      {f:"Food",b:"Ovqat"},
+      {f:"Help!",b:"Yordam!"},
+      {f:"Beautiful",b:"Chiroyli"},
+      {f:"Time",b:"Vaqt"},
+      {f:"Today",b:"Bugun"},
+      {f:"Tomorrow",b:"Ertaga"},
+      {f:"Friend",b:"Do'st"},
+    ]
+  },
+  {
+    id: 'ru_uz_basic', emoji: '🇷🇺', name: "Ruscha — Asosiy",
+    cards: [
+      {f:"Привет",b:"Salom"},
+      {f:"Спасибо",b:"Rahmat"},
+      {f:"Пожалуйста",b:"Iltimos / Marhamat"},
+      {f:"Извините",b:"Kechirasiz"},
+      {f:"Да / Нет",b:"Ha / Yo'q"},
+      {f:"Доброе утро",b:"Xayrli tong"},
+      {f:"Доброй ночи",b:"Xayrli tun"},
+      {f:"Как дела?",b:"Qalaysiz?"},
+      {f:"Меня зовут...",b:"Mening ismim..."},
+      {f:"Я не понимаю",b:"Tushunmadim"},
+      {f:"Где находится?",b:"Qayerda joylashgan?"},
+      {f:"Сколько стоит?",b:"Qancha turadi?"},
+      {f:"Вода",b:"Suv"},
+      {f:"Еда",b:"Ovqat"},
+      {f:"Помогите!",b:"Yordam!"},
+      {f:"Красивый",b:"Chiroyli"},
+      {f:"Время",b:"Vaqt"},
+      {f:"Сегодня",b:"Bugun"},
+      {f:"Завтра",b:"Ertaga"},
+      {f:"Друг",b:"Do'st"},
+    ]
+  },
+  {
+    id: 'it_uz', emoji: '🇮🇹', name: "Italyancha — Starter",
+    cards: [
+      {f:"Ciao",b:"Salom"},
+      {f:"Grazie",b:"Rahmat"},
+      {f:"Prego",b:"Marhamat"},
+      {f:"Scusi",b:"Kechirasiz"},
+      {f:"Sì / No",b:"Ha / Yo'q"},
+      {f:"Buongiorno",b:"Xayrli kun"},
+      {f:"Buonanotte",b:"Xayrli tun"},
+      {f:"Come stai?",b:"Qalaysiz?"},
+      {f:"Mi chiamo...",b:"Mening ismim..."},
+      {f:"Non capisco",b:"Tushunmadim"},
+      {f:"Acqua",b:"Suv"},
+      {f:"Cibo",b:"Ovqat"},
+      {f:"Aiuto!",b:"Yordam!"},
+      {f:"Bello",b:"Chiroyli"},
+    ]
+  },
+  {
+    id: 'it_tech', emoji: '💻', name: "IT Atamalar",
+    cards: [
+      {f:"Algorithm",b:"Algoritm — muammoni hal qilish qadamlari"},
+      {f:"Variable",b:"O'zgaruvchi — qiymat saqlovchi"},
+      {f:"Function",b:"Funksiya — qayta ishlatiladigan kod bloki"},
+      {f:"Array",b:"Massiv — tartibli elementlar to'plami"},
+      {f:"Object",b:"Ob'ekt — kalit-qiymat juftliklari"},
+      {f:"Loop",b:"Sikl — takrorlanadigan kod"},
+      {f:"Condition",b:"Shart — if/else"},
+      {f:"API",b:"Dasturiy interfeys — tizimlar muloqoti"},
+      {f:"Database",b:"Ma'lumotlar bazasi"},
+      {f:"Framework",b:"Dasturlash asosi — tayyor tuzilma"},
+      {f:"Debugging",b:"Xatolarni qidirish va tuzatish"},
+      {f:"Deployment",b:"Dasturni serverga joylashtirish"},
+      {f:"Frontend",b:"Foydalanuvchi ko'radigan qism"},
+      {f:"Backend",b:"Server tomoni, logika"},
+      {f:"Repository",b:"Kod ombori (Git)"},
+    ]
+  },
 ];
 
-// ── State ──────────────────────────────────────────────────────────
-let state = {
-  score: 0, correct: 0, wrong: 0,
-  total: 0, hintUsed: false,
-  currentIdx: 0, answered: false,
-  shuffled: []
-};
+/* ── Spaced Repetition (SM-2 simplified) ─── */
+function getNextInterval(card, quality) {
+  // quality: 1=hard, 3=ok, 5=easy
+  if (!card.interval) card.interval = 1;
+  if (!card.easeFactor) card.easeFactor = 2.5;
+  if (!card.repetitions) card.repetitions = 0;
 
-function shuffle(arr) {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
-
-function init() {
-  state.shuffled = shuffle(PUZZLES);
-  loadPuzzle();
-}
-
-function loadPuzzle() {
-  if (state.currentIdx >= state.shuffled.length) {
-    state.currentIdx = 0;
-    state.shuffled = shuffle(PUZZLES);
-  }
-  const p = state.shuffled[state.currentIdx];
-  state.answered = false;
-  state.hintUsed = false;
-
-  document.getElementById('puzzleNumber').textContent = `TOPISHMOQ #${state.total + 1}`;
-  document.getElementById('puzzleQuestion').textContent = p.q;
-  document.getElementById('hintBox').style.display = 'none';
-  document.getElementById('resultBanner').style.display = 'none';
-  document.getElementById('hintBtn').disabled = false;
-  document.getElementById('nextBtn').disabled = true;
-
-  const grid = document.getElementById('optionsGrid');
-  grid.innerHTML = '';
-  p.opts.forEach(opt => {
-    const btn = document.createElement('button');
-    btn.className = 'option-btn';
-    btn.textContent = opt;
-    btn.onclick = () => checkAnswer(opt, p, btn);
-    grid.appendChild(btn);
-  });
-
-  updateUI();
-}
-
-function checkAnswer(selected, puzzle, btn) {
-  if (state.answered) return;
-  state.answered = true;
-  state.total++;
-
-  const isCorrect = selected === puzzle.a;
-  const banner = document.getElementById('resultBanner');
-  const allBtns = document.querySelectorAll('.option-btn');
-
-  allBtns.forEach(b => {
-    b.disabled = true;
-    if (b.textContent === puzzle.a) b.classList.add('correct');
-  });
-
-  if (isCorrect) {
-    state.score += 10;
-    state.correct++;
-    btn.classList.add('correct');
-    banner.textContent = '✅ To\'g\'ri! +10 ball 🎉';
-    banner.className = 'result-banner correct';
-    launchConfetti();
-    tg.HapticFeedback.notificationOccurred('success');
+  if (quality >= 3) {
+    if (card.repetitions === 0) card.interval = 1;
+    else if (card.repetitions === 1) card.interval = 6;
+    else card.interval = Math.round(card.interval * card.easeFactor);
+    card.repetitions++;
   } else {
-    state.score -= 2;
-    state.wrong++;
-    btn.classList.add('wrong');
-    banner.textContent = `❌ Noto'g'ri! -2 ball. To'g'ri: ${puzzle.a}`;
-    banner.className = 'result-banner wrong';
-    tg.HapticFeedback.notificationOccurred('error');
+    card.repetitions = 0;
+    card.interval = 1;
   }
 
-  banner.style.display = 'block';
-  document.getElementById('nextBtn').disabled = false;
-  updateUI();
+  card.easeFactor = Math.max(1.3,
+    card.easeFactor + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)
+  );
+
+  const nextDate = new Date();
+  nextDate.setDate(nextDate.getDate() + card.interval);
+  card.nextReview = nextDate.toISOString().split('T')[0];
+  card.lastQuality = quality;
+  return card;
 }
 
-function showHint() {
-  if (state.hintUsed || state.answered) return;
-  state.hintUsed = true;
-  state.score -= 3;
-  const p = state.shuffled[state.currentIdx];
-  document.getElementById('hintText').textContent = p.hint;
-  document.getElementById('hintBox').style.display = 'block';
-  document.getElementById('hintBtn').disabled = true;
-  updateUI();
-  tg.HapticFeedback.impactOccurred('light');
+function isDue(card) {
+  if (!card.nextReview) return true;
+  return card.nextReview <= new Date().toISOString().split('T')[0];
 }
 
-function nextPuzzle() {
-  state.currentIdx++;
-  loadPuzzle();
+/* ── State ───────────────────────────────── */
+let db = loadDB();
+let currentDeck = null;
+let studyQueue = [];
+let studyIdx = 0;
+let isFlipped = false;
+let sessionStats = { easy:0, ok:0, hard:0 };
+
+/* ── Screen Nav ──────────────────────────── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'homeScreen') renderHome();
 }
 
-function updateUI() {
-  document.getElementById('scoreDisplay').textContent = state.score;
-  document.getElementById('totalSolved').textContent = state.total;
-  document.getElementById('correctCount').textContent = state.correct;
-  document.getElementById('wrongCount').textContent = state.wrong;
+/* ── Render Home ─────────────────────────── */
+function renderHome() {
+  updateStreak();
+  const grid = document.getElementById('deckGrid');
 
-  const pct = Math.min((state.correct / PUZZLES.length) * 100, 100);
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressText').textContent = `${state.correct} / ${PUZZLES.length}`;
+  // Count stats
+  let total = 0, learned = 0;
+  db.decks.forEach(d => {
+    total += d.cards.length;
+    learned += d.cards.filter(c => c.repetitions > 0).length;
+  });
+
+  document.getElementById('totalCards').textContent = total;
+  document.getElementById('learnedCards').textContent = learned;
+  document.getElementById('todayCards').textContent = db.todayCount || 0;
+  document.getElementById('streakCount').textContent = db.streak || 0;
+
+  // Render deck cards
+  grid.innerHTML = '';
+  db.decks.forEach(deck => {
+    const due = deck.cards.filter(isDue).length;
+    const learned = deck.cards.filter(c => c.repetitions > 0).length;
+    const pct = deck.cards.length ? Math.round(learned / deck.cards.length * 100) : 0;
+
+    const card = document.createElement('div');
+    card.className = 'deck-card';
+    card.innerHTML = `
+      <div class="deck-emoji">${deck.emoji || '🃏'}</div>
+      <div class="deck-name">${deck.name}</div>
+      <div class="deck-count">${deck.cards.length} karta · ${due > 0 ? `<span style="color:var(--accent)">${due} bugun</span>` : '✅ tayyor'}</div>
+      <div class="deck-progress-bar"><div class="deck-progress-fill" style="width:${pct}%"></div></div>
+    `;
+    card.onclick = () => startStudy(deck.id);
+    grid.appendChild(card);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn-add-deck';
+  addBtn.innerHTML = '➕ Yangi to\'plam yaratish';
+  addBtn.onclick = () => showScreen('addDeckScreen');
+  grid.appendChild(addBtn);
 }
 
-// ── Confetti ───────────────────────────────────────────────────────
-function launchConfetti() {
-  const canvas = document.getElementById('confettiCanvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  const particles = Array.from({length: 60}, () => ({
-    x: Math.random() * canvas.width,
-    y: -10,
-    r: Math.random() * 6 + 3,
-    color: `hsl(${Math.random()*360},70%,60%)`,
-    vx: (Math.random()-0.5)*4,
-    vy: Math.random()*4+2,
-    alpha: 1
-  }));
-  let frame;
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(p => {
-      p.x += p.vx; p.y += p.vy; p.alpha -= 0.015;
-      ctx.globalAlpha = Math.max(p.alpha, 0);
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-      ctx.fill();
-    });
-    if (particles.some(p => p.alpha > 0)) frame = requestAnimationFrame(draw);
-    else { ctx.clearRect(0,0,canvas.width,canvas.height); }
+/* ── Streak ──────────────────────────────── */
+function updateStreak() {
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+  if (db.lastStudyDate === today) return;
+  if (db.lastStudyDate === yesterday) {
+    // streak continues — will be updated on study
+  } else if (db.lastStudyDate && db.lastStudyDate < yesterday) {
+    db.streak = 0; // streak broken
+    saveDB(db);
   }
-  if (frame) cancelAnimationFrame(frame);
-  draw();
+  if (db.lastStudyDate !== today) {
+    db.todayCount = 0;
+  }
+}
+
+/* ── Start Study ─────────────────────────── */
+function startStudy(deckId) {
+  currentDeck = db.decks.find(d => d.id === deckId);
+  if (!currentDeck) return;
+
+  // Build queue: due cards first, then others (max 20)
+  const due = currentDeck.cards.filter(isDue);
+  const notDue = currentDeck.cards.filter(c => !isDue(c));
+  studyQueue = [...due, ...notDue].slice(0, 20);
+
+  if (!studyQueue.length) {
+    showToast('Bu to\'plamda karta yo\'q!'); return;
+  }
+
+  studyIdx = 0;
+  sessionStats = { easy:0, ok:0, hard:0 };
+  document.getElementById('studyTitle').textContent = currentDeck.name;
+  showScreen('studyScreen');
+  loadCard();
+}
+
+function loadCard() {
+  if (studyIdx >= studyQueue.length) {
+    showComplete(); return;
+  }
+
+  const card = studyQueue[studyIdx];
+  isFlipped = false;
+  document.getElementById('cardWrap').classList.remove('flipped');
+  document.getElementById('flipPrompt').style.display = 'block';
+  document.getElementById('ratingBtns').style.display = 'none';
+
+  document.getElementById('frontWord').textContent = card.f;
+  document.getElementById('frontHint').textContent = card.h || '';
+  document.getElementById('backWord').textContent = card.b;
+  document.getElementById('backExample').textContent = card.ex || '';
+
+  const pct = Math.round((studyIdx / studyQueue.length) * 100);
+  document.getElementById('studyProgress').style.width = pct + '%';
+  document.getElementById('studyCounter').textContent = `${studyIdx + 1} / ${studyQueue.length}`;
+
+  tg.HapticFeedback.selectionChanged();
+}
+
+function flipCard() {
+  const wrap = document.getElementById('cardWrap');
+  isFlipped = !isFlipped;
+  wrap.classList.toggle('flipped', isFlipped);
+
+  if (isFlipped) {
+    document.getElementById('flipPrompt').style.display = 'none';
+    document.getElementById('ratingBtns').style.display = 'grid';
+    tg.HapticFeedback.impactOccurred('light');
+  } else {
+    document.getElementById('flipPrompt').style.display = 'block';
+    document.getElementById('ratingBtns').style.display = 'none';
+  }
+}
+
+function rateCard(quality) {
+  if (!isFlipped) return;
+
+  const card = studyQueue[studyIdx];
+
+  // Find in deck and update
+  const deckCard = currentDeck.cards.find(c => c.f === card.f && c.b === card.b);
+  if (deckCard) getNextInterval(deckCard, quality);
+
+  // Session stats
+  if (quality === 5) sessionStats.easy++;
+  else if (quality === 3) sessionStats.ok++;
+  else sessionStats.hard++;
+
+  // DB update
+  db.todayCount = (db.todayCount || 0) + 1;
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  if (db.lastStudyDate === yesterday || db.lastStudyDate === today) {
+    if (db.lastStudyDate !== today) db.streak = (db.streak || 0) + 1;
+  } else {
+    db.streak = 1;
+  }
+  db.lastStudyDate = today;
+  db.totalLearned = (db.totalLearned || 0) + 1;
+  saveDB(db);
+
+  tg.HapticFeedback.impactOccurred(quality === 5 ? 'medium' : quality === 3 ? 'light' : 'rigid');
+
+  studyIdx++;
+  setTimeout(loadCard, 150);
+}
+
+/* ── Complete ────────────────────────────── */
+function showComplete() {
+  document.getElementById('easyCount').textContent = sessionStats.easy;
+  document.getElementById('okCount').textContent = sessionStats.ok;
+  document.getElementById('hardCount').textContent = sessionStats.hard;
+
+  const total = sessionStats.easy + sessionStats.ok + sessionStats.hard;
+  const pct = total ? Math.round(sessionStats.easy / total * 100) : 0;
+
+  let emoji = '🎉', title = 'Ajoyib!';
+  if (pct >= 80) { emoji = '🏆'; title = 'Zo\'r natija!'; }
+  else if (pct >= 50) { emoji = '💪'; title = 'Yaxshi ish!'; }
+  else { emoji = '📚'; title = 'Davom eting!'; }
+
+  document.getElementById('completeEmoji').textContent = emoji;
+  document.getElementById('completeTitle').textContent = title;
+  document.getElementById('completeSub').textContent =
+    `${total} ta karta ko'rildi · 🔥 ${db.streak} kunlik streak`;
+
+  showScreen('completeScreen');
+  tg.HapticFeedback.notificationOccurred('success');
+}
+
+function restartStudy() {
+  if (currentDeck) startStudy(currentDeck.id);
+}
+
+/* ── Add Deck Tabs ───────────────────────── */
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i === (tab==='preset'?0:1)));
+  document.getElementById('presetTab').style.display = tab === 'preset' ? 'block' : 'none';
+  document.getElementById('customTab').style.display = tab === 'custom' ? 'block' : 'none';
+
+  if (tab === 'preset') renderPresets();
+  else if (!document.getElementById('cardRows').children.length) { addCardRow(); addCardRow(); }
+}
+
+function renderPresets() {
+  const grid = document.getElementById('presetGrid');
+  grid.innerHTML = '';
+  PRESET_DECKS.forEach(pd => {
+    const already = db.decks.find(d => d.id === pd.id);
+    const card = document.createElement('div');
+    card.className = 'deck-card';
+    card.style.cursor = already ? 'default' : 'pointer';
+    card.innerHTML = `
+      <div class="deck-emoji">${pd.emoji}</div>
+      <div class="deck-name">${pd.name}</div>
+      <div class="deck-count">${pd.cards.length} karta</div>
+      <div style="margin-top:10px;font-size:12px;font-weight:600;color:${already?'var(--green)':'var(--accent)'}">
+        ${already ? '✅ Qo\'shilgan' : '+ Qo\'shish'}
+      </div>
+    `;
+    if (!already) card.onclick = () => addPresetDeck(pd);
+    grid.appendChild(card);
+  });
+}
+
+function addPresetDeck(pd) {
+  db.decks.push({ ...pd, cards: pd.cards.map(c => ({...c})) });
+  saveDB(db);
+  showToast(`✅ "${pd.name}" qo'shildi!`);
+  renderPresets();
+}
+
+/* ── Custom Deck ─────────────────────────── */
+function addCardRow() {
+  const container = document.getElementById('cardRows');
+  const row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 28px;gap:8px;margin-bottom:8px;align-items:center;';
+  row.innerHTML = `
+    <input class="form-input card-front-input" placeholder="So'z / ibora" style="padding:10px 12px;font-size:14px">
+    <input class="form-input card-back-input" placeholder="Tarjimasi" style="padding:10px 12px;font-size:14px">
+    <button onclick="this.parentElement.remove()" style="background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.3);border-radius:10px;width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">×</button>
+  `;
+  container.appendChild(row);
+}
+
+function saveCustomDeck() {
+  const name = document.getElementById('deckNameInput').value.trim();
+  const emoji = document.getElementById('deckEmojiInput').value.trim() || '🃏';
+  if (!name) { showToast('❗ To\'plam nomini kiriting!'); return; }
+
+  const cards = [];
+  document.querySelectorAll('#cardRows > div').forEach(row => {
+    const f = row.querySelector('.card-front-input').value.trim();
+    const b = row.querySelector('.card-back-input').value.trim();
+    if (f && b) cards.push({ f, b });
+  });
+
+  if (!cards.length) { showToast('❗ Kamida 1 ta karta kiriting!'); return; }
+
+  db.decks.push({
+    id: 'custom_' + Date.now(),
+    name, emoji, cards
+  });
+  saveDB(db);
+  showToast(`✅ "${name}" saqlandi! (${cards.length} karta)`);
+  setTimeout(() => showScreen('homeScreen'), 500);
+}
+
+/* ── Toast ───────────────────────────────── */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ── Init ────────────────────────────────── */
+function init() {
+  // Auto-add EN-UZ deck for first timers
+  if (!db.decks.length) {
+    const eng = PRESET_DECKS[0];
+    db.decks.push({ ...eng, cards: eng.cards.map(c => ({...c})) });
+    saveDB(db);
+  }
+  renderHome();
+  renderPresets();
 }
 
 init();
 </script>
 </body>
 </html>
-
