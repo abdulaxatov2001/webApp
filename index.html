@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>🧩 Puzzle Game</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #1a1a2e);
+    --secondary-bg: var(--tg-theme-secondary-bg-color, #16213e);
+    --text: var(--tg-theme-text-color, #ffffff);
+    --hint: var(--tg-theme-hint-color, #aaaaaa);
+    --link: var(--tg-theme-link-color, #6c63ff);
+    --button: var(--tg-theme-button-color, #6c63ff);
+    --button-text: var(--tg-theme-button-text-color, #ffffff);
+    --accent: #6c63ff;
+    --correct: #4caf50;
+    --wrong: #f44336;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 12px 16px;
+    background: var(--secondary-bg);
+    border-radius: var(--radius);
+  }
+
+  .header h1 { font-size: 20px; }
+
+  .score-badge {
+    background: var(--accent);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    margin-bottom: 20px;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--hint);
+    margin-bottom: 6px;
+  }
+  .progress-bar {
+    height: 6px;
+    background: var(--secondary-bg);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #a78bfa);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+  }
+
+  /* Puzzle card */
+  .puzzle-card {
+    background: var(--secondary-bg);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(108, 99, 255, 0.2);
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .puzzle-number {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  .puzzle-question {
+    font-size: 17px;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+
+  /* Options grid */
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .option-btn {
+    background: var(--secondary-bg);
+    border: 2px solid rgba(108, 99, 255, 0.3);
+    color: var(--text);
+    padding: 14px 10px;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+
+  .option-btn:active { transform: scale(0.96); }
+  .option-btn:hover { border-color: var(--accent); background: rgba(108,99,255,0.1); }
+  .option-btn.correct { background: rgba(76,175,80,0.2); border-color: var(--correct); color: var(--correct); }
+  .option-btn.wrong { background: rgba(244,67,54,0.2); border-color: var(--wrong); color: var(--wrong); }
+  .option-btn:disabled { cursor: not-allowed; opacity: 0.7; }
+
+  /* Action buttons */
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: var(--radius);
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-hint {
+    background: rgba(255,193,7,0.15);
+    color: #ffc107;
+    border: 1px solid rgba(255,193,7,0.3);
+  }
+
+  .btn-next {
+    background: var(--accent);
+    color: white;
+  }
+
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Result banner */
+  .result-banner {
+    display: none;
+    padding: 14px;
+    border-radius: var(--radius);
+    text-align: center;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .result-banner.correct { background: rgba(76,175,80,0.2); color: var(--correct); border: 1px solid var(--correct); }
+  .result-banner.wrong { background: rgba(244,67,54,0.2); color: var(--wrong); border: 1px solid var(--wrong); }
+
+  /* Stats */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--secondary-bg);
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-value { font-size: 24px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 11px; color: var(--hint); margin-top: 4px; }
+
+  /* Hint box */
+  .hint-box {
+    display: none;
+    background: rgba(255,193,7,0.1);
+    border: 1px solid rgba(255,193,7,0.3);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    color: #ffc107;
+    font-size: 14px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  /* Confetti */
+  .confetti-wrap {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 999;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🧩 Puzzle</h1>
+  <div class="score-badge">⭐ <span id="scoreDisplay">0</span></div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="stat-value" id="totalSolved">0</div>
+    <div class="stat-label">Yechilgan</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="correctCount">0</div>
+    <div class="stat-label">To'g'ri</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="wrongCount">0</div>
+    <div class="stat-label">Noto'g'ri</div>
+  </div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-label">
+    <span>Jarayon</span>
+    <span id="progressText">0 / 5</span>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+</div>
+
+<div class="puzzle-card">
+  <div class="puzzle-number" id="puzzleNumber">TOPISHMOQ #1</div>
+  <div class="puzzle-question" id="puzzleQuestion">Yuklanmoqda...</div>
+</div>
+
+<div class="hint-box" id="hintBox">💡 <span id="hintText"></span></div>
+<div class="result-banner" id="resultBanner"></div>
+
+<div class="options-grid" id="optionsGrid"></div>
+
+<div class="actions">
+  <button class="btn btn-hint" id="hintBtn" onclick="showHint()">💡 Hint (-3)</button>
+  <button class="btn btn-next" id="nextBtn" onclick="nextPuzzle()" disabled>⏭ Keyingi</button>
+</div>
+
+<canvas class="confetti-wrap" id="confettiCanvas"></canvas>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+// ── Puzzles ──────────────────────────────────────────────────────────
+const PUZZLES = [
+  { id:1, q:"🔢 Men 2 xonali sonman. O'nlar raqamim birlar raqamimdan 3 ta ko'p. Yig'indim 11. Men kimman?", a:"74", hint:"O'nlar + birlar = 11, o'nlar - birlar = 3", opts:["47","74","83","56"] },
+  { id:2, q:"🧩 Bir fermer 17 ta qo'yi bor edi. Bittasidan tashqari hammasi o'lib qoldi. Qancha qo'y qoldi?", a:"17", hint:"Savolni diqqat bilan o'qi 😉", opts:["1","16","17","0"] },
+  { id:3, q:"🔢 1, 1, 2, 3, 5, 8, 13, ... keyingi son?", a:"21", hint:"Fibonacci ketma-ketligi", opts:["18","20","21","25"] },
+  { id:4, q:"⚖️ 1 kg paxta og'irroqmi yoki 1 kg temirmi?", a:"Teng", hint:"Ikkalasi ham 1 kg 😄", opts:["Paxta","Temir","Teng","Bilmayman"] },
+  { id:5, q:"🧮 5 ta mushuk 5 daqiqada 5 ta sichqon tutsa, 100 ta mushuk 100 daqiqada nechta sichqon tutadi?", a:"10000", hint:"Har bir mushuk 1 daqiqada 1 ta tutadi", opts:["100","500","1000","10000"] },
+  { id:6, q:"🔢 Bir ota 3 ta o'g'li bor. Har bir o'g'lining 1 ta singlisi bor. Oilada nechta bola bor?", a:"4", hint:"Singlisi — hammaga umumiy bitta 😊", opts:["3","4","6","7"] },
+  { id:7, q:"🧠 Qaysi son butun sonlarning kvadratlari orasida uchrasa ham, 100 dan kichik ham?", a:"81", hint:"9×9 = ?", opts:["64","81","90","99"] },
+];
+
+// ── State ──────────────────────────────────────────────────────────
+let state = {
+  score: 0, correct: 0, wrong: 0,
+  total: 0, hintUsed: false,
+  currentIdx: 0, answered: false,
+  shuffled: []
+};
+
+function shuffle(arr) {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function init() {
+  state.shuffled = shuffle(PUZZLES);
+  loadPuzzle();
+}
+
+function loadPuzzle() {
+  if (state.currentIdx >= state.shuffled.length) {
+    state.currentIdx = 0;
+    state.shuffled = shuffle(PUZZLES);
+  }
+  const p = state.shuffled[state.currentIdx];
+  state.answered = false;
+  state.hintUsed = false;
+
+  document.getElementById('puzzleNumber').textContent = `TOPISHMOQ #${state.total + 1}`;
+  document.getElementById('puzzleQuestion').textContent = p.q;
+  document.getElementById('hintBox').style.display = 'none';
+  document.getElementById('resultBanner').style.display = 'none';
+  document.getElementById('hintBtn').disabled = false;
+  document.getElementById('nextBtn').disabled = true;
+
+  const grid = document.getElementById('optionsGrid');
+  grid.innerHTML = '';
+  p.opts.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.textContent = opt;
+    btn.onclick = () => checkAnswer(opt, p, btn);
+    grid.appendChild(btn);
+  });
+
+  updateUI();
+}
+
+function checkAnswer(selected, puzzle, btn) {
+  if (state.answered) return;
+  state.answered = true;
+  state.total++;
+
+  const isCorrect = selected === puzzle.a;
+  const banner = document.getElementById('resultBanner');
+  const allBtns = document.querySelectorAll('.option-btn');
+
+  allBtns.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === puzzle.a) b.classList.add('correct');
+  });
+
+  if (isCorrect) {
+    state.score += 10;
+    state.correct++;
+    btn.classList.add('correct');
+    banner.textContent = '✅ To\'g\'ri! +10 ball 🎉';
+    banner.className = 'result-banner correct';
+    launchConfetti();
+    tg.HapticFeedback.notificationOccurred('success');
+  } else {
+    state.score -= 2;
+    state.wrong++;
+    btn.classList.add('wrong');
+    banner.textContent = `❌ Noto'g'ri! -2 ball. To'g'ri: ${puzzle.a}`;
+    banner.className = 'result-banner wrong';
+    tg.HapticFeedback.notificationOccurred('error');
+  }
+
+  banner.style.display = 'block';
+  document.getElementById('nextBtn').disabled = false;
+  updateUI();
+}
+
+function showHint() {
+  if (state.hintUsed || state.answered) return;
+  state.hintUsed = true;
+  state.score -= 3;
+  const p = state.shuffled[state.currentIdx];
+  document.getElementById('hintText').textContent = p.hint;
+  document.getElementById('hintBox').style.display = 'block';
+  document.getElementById('hintBtn').disabled = true;
+  updateUI();
+  tg.HapticFeedback.impactOccurred('light');
+}
+
+function nextPuzzle() {
+  state.currentIdx++;
+  loadPuzzle();
+}
+
+function updateUI() {
+  document.getElementById('scoreDisplay').textContent = state.score;
+  document.getElementById('totalSolved').textContent = state.total;
+  document.getElementById('correctCount').textContent = state.correct;
+  document.getElementById('wrongCount').textContent = state.wrong;
+
+  const pct = Math.min((state.correct / PUZZLES.length) * 100, 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${state.correct} / ${PUZZLES.length}`;
+}
+
+// ── Confetti ───────────────────────────────────────────────────────
+function launchConfetti() {
+  const canvas = document.getElementById('confettiCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const particles = Array.from({length: 60}, () => ({
+    x: Math.random() * canvas.width,
+    y: -10,
+    r: Math.random() * 6 + 3,
+    color: `hsl(${Math.random()*360},70%,60%)`,
+    vx: (Math.random()-0.5)*4,
+    vy: Math.random()*4+2,
+    alpha: 1
+  }));
+  let frame;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.alpha -= 0.015;
+      ctx.globalAlpha = Math.max(p.alpha, 0);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fill();
+    });
+    if (particles.some(p => p.alpha > 0)) frame = requestAnimationFrame(draw);
+    else { ctx.clearRect(0,0,canvas.width,canvas.height); }
+  }
+  if (frame) cancelAnimationFrame(frame);
+  draw();
+}
+
+init();
+</script>
+</body>
+</html>
+
